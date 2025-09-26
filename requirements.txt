@@ -1,0 +1,4 @@
+﻿pybamm>=23.9
+matplotlib>=3.7
+pandas>=2.0
+numpy>=1.24
