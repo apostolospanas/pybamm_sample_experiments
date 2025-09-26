@@ -5,7 +5,7 @@ This repository demonstrates how to use PyBaMM with different models and paramet
 
 ---
 
-## 📂 Repository structure
+##  Repository structure
 \\\
 experiments/   # individual cycling experiments
 sweeps/        # parameter sweeps
@@ -19,20 +19,20 @@ README.md
 ## ⚡ Getting started
 
 ### 1. Clone the repo
-\\\ash
+\\\ ash
 git clone https://github.com/apostolospanas/pybamm_sample_experiments.git
 cd pybamm_sample_experiments
 \\\
 
 ### 2. Create a virtual environment
-\\\ash
+\\\ ash
 python -m venv .venv
 .venv\Scripts\activate   # Windows
 source .venv/bin/activate   # Mac/Linux
 \\\
 
 ### 3. Install dependencies
-\\\ash
+\\\ ash
 pip install -r requirements.txt
 \\\
 
@@ -62,19 +62,19 @@ Each script will:
 
 ---
 
-## 📊 Outputs
+##  Outputs
 - **CSV results**: stored under results_*/
 - **Plots**: displayed during execution (voltage vs time, capacity retention, dQ/dV, etc.)
 - **Summary files**: with capacity/energy metrics per run or per sweep
 
 ---
 
-## 🔬 Models & Parameter Sets
+##  Models & Parameter Sets
 - **Chen2020**: widely used for NMC/graphite cell validation
 - **Ai2020**: pouch-cell parameter set
 - Models: SPM, SPMe, DFN (single particle, reduced-order, Doyle–Fuller–Newman)
 
 ---
 
-## 📜 License
+##  License
 MIT License — free to use, modify, and share.
