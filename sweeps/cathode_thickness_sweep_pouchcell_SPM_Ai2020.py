@@ -5,6 +5,7 @@ import numpy as np
 import os
 from datetime import datetime
 from pathlib import Path
+import balthazar as blt 
 
 # ---------------------------
 # CONFIG
@@ -12,7 +13,6 @@ from pathlib import Path
 PARAM_SET = "Ai2020"
 MODEL_NAME = "DFN"
 
-# Cycling protocol (same as before)
 n_cycles = 3
 charge_rate_C = 1.0
 discharge_rate_C = 1.0
@@ -22,13 +22,10 @@ cv_tail_cutoff = 0.05
 rest_between = "10 minutes"
 period_resolution = "1 minute"
 
-# DFN model options
 model_options = {"thermal": "lumped", "current collector": "uniform"}
 
-# Sweep the **cathode** (positive electrode) thickness in micrometres
-pos_thickness_um_list = [40, 60, 80, 100, 120]  # edit as you wish
+pos_thickness_um_list = [40, 60, 80, 100, 120]  
 
-# Timestamp & output dir
 stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 OUTPUT_DIR = Path(__file__).resolve().parent / f"results_pos_thickness_sweep_{stamp}"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -39,7 +36,7 @@ def out(name: str) -> str:
 # ---------------------------
 # MODEL & BASE PARAMETERS
 # ---------------------------
-if MODEL_NAME == "SPM":
+if MODEL_NAME == "DFN":
     base_model = pybamm.lithium_ion.DFN(options=model_options)
 else:
     base_model = pybamm.lithium_ion.SPMe(options=model_options)
@@ -51,11 +48,6 @@ base_param.update({
     "Ambient temperature [K]": 298.15,
 })
 
-# Report defaults
-default_pos_thickness_m = float(base_param["Positive electrode thickness [m]"])
-print(f"Default Ai2020 positive electrode thickness: {default_pos_thickness_m*1e6:.1f} µm")
-
-# Experiment
 experiment = pybamm.Experiment(
     [
         f"Discharge at {discharge_rate_C}C until {v_discharge_cutoff} V",
@@ -87,16 +79,11 @@ for pos_um in pos_thickness_um_list:
     csv_file = out(f"results_{tag}.csv")
 
     if os.path.exists(csv_file):
-        print(f"{csv_file} exists, skipping simulation for {tag}.")
         df = pd.read_csv(csv_file)
     else:
-        print(f"\n=== Running {tag} with {PARAM_SET} ===")
-
-        # Copy base params and ONLY change the cathode thickness
         p = base_param.copy()
         p.update({"Positive electrode thickness [m]": pos_m})
 
-        # Fresh simulation with updated parameters
         sim = pybamm.Simulation(
             base_model,
             parameter_values=p,
@@ -115,11 +102,9 @@ for pos_um in pos_thickness_um_list:
         }
         df = pd.DataFrame(out_dict)
         df.to_csv(csv_file, index=False)
-        print(f"Saved {tag} results to {csv_file}")
 
     dfs[tag] = df
 
-    # Simple metrics
     metrics = {
         "Positive thickness [um]": pos_um,
         "Max discharge capacity [Ah]": float(df["Discharge capacity [A.h]"].max()),
@@ -128,29 +113,35 @@ for pos_um in pos_thickness_um_list:
     }
     summaries.append(metrics)
 
+    # Log metrics in Balthazar
+    for k, v in metrics.items():
+        blt.log_metric(f"{tag} - {k}", v)
+
 # ---------------------------
 # VISUALISATION
 # ---------------------------
 # Voltage vs Time
-plt.figure(figsize=(10, 6))
+fig1, ax1 = plt.subplots(figsize=(10, 6))
 for tag, df in dfs.items():
-    plt.plot(df["Time [h]"], df["Voltage [V]"], label=tag)
-plt.xlabel("Time [h]"); plt.ylabel("Terminal Voltage [V]")
-plt.title(f"Voltage vs Time — Positive electrode thickness sweep ({PARAM_SET})")
-plt.legend(); plt.grid(True); plt.tight_layout(); plt.show()
+    ax1.plot(df["Time [h]"], df["Voltage [V]"], label=tag)
+ax1.set_xlabel("Time [h]"); ax1.set_ylabel("Terminal Voltage [V]")
+ax1.set_title(f"Voltage vs Time — Positive electrode thickness sweep ({PARAM_SET})")
+ax1.legend(); ax1.grid(True); fig1.tight_layout()
+blt.log_plot("Voltage vs Time", fig1)
 
-# Discharge Energy per Cycle (approx using equal segmentation)
+# Discharge Energy vs Cycle
 def points_per_cycle(n, c): return n // c if c > 0 else n
 
-plt.figure(figsize=(8, 5))
+fig2, ax2 = plt.subplots(figsize=(8, 5))
 for tag, df in dfs.items():
     npts = points_per_cycle(len(df), n_cycles)
     energies = [df["Discharge energy [W.h]"].iloc[min((i+1)*npts - 1, len(df)-1)]
                 for i in range(n_cycles)]
-    plt.plot(range(1, n_cycles+1), energies, marker='o', label=tag)
-plt.xlabel("Cycle"); plt.ylabel("Discharge Energy [Wh]")
-plt.title(f"Discharge Energy vs Cycle — Positive thickness sweep ({PARAM_SET})")
-plt.legend(); plt.grid(True); plt.tight_layout(); plt.show()
+    ax2.plot(range(1, n_cycles+1), energies, marker='o', label=tag)
+ax2.set_xlabel("Cycle"); ax2.set_ylabel("Discharge Energy [Wh]")
+ax2.set_title(f"Discharge Energy vs Cycle — Positive thickness sweep ({PARAM_SET})")
+ax2.legend(); ax2.grid(True); fig2.tight_layout()
+blt.log_plot("Discharge Energy vs Cycle", fig2)
 
 # ---------------------------
 # SAVE SUMMARY
@@ -158,5 +149,6 @@ plt.legend(); plt.grid(True); plt.tight_layout(); plt.show()
 summary_df = pd.DataFrame(summaries).sort_values("Positive thickness [um]")
 summary_file = out("positive_thickness_sweep_summary.csv")
 summary_df.to_csv(summary_file, index=False)
-print(f"\nSaved summary to {summary_file}")
-print(summary_df)
+
+blt.log_artifact(summary_file)
+blt.log_dataframe("Summary Table", summary_df)
