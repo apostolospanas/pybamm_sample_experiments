@@ -11,7 +11,7 @@ import balthazar as blt
 # CONFIG
 # ---------------------------
 PARAM_SET = "Ai2020"
-MODEL_NAME = "SPM"
+MODEL_NAME = "SPMe"
 
 n_cycles = 3
 charge_rate_C = 1.0
@@ -39,15 +39,10 @@ def out(name: str) -> str:
 # ---------------------------
 # MODEL & BASE PARAMETERS
 # ---------------------------
-if MODEL_NAME == "DFN":
+if MODEL_NAME == "SPMe":
     base_model = pybamm.lithium_ion.DFN(options=model_options)
-elif MODEL_NAME == "SPMe":
-    base_model = pybamm.lithium_ion.SPMe(options=model_options)
-elif MODEL_NAME == "SPM":
-    base_model = pybamm.lithium_ion.SPM(options=model_options)
 else:
-    raise ValueError(f"Unknown model name: {MODEL_NAME}")
-
+    base_model = pybamm.lithium_ion.SPMe(options=model_options)
 base_param = pybamm.ParameterValues(PARAM_SET)
 base_param.update({
     "Upper voltage cut-off [V]": v_charge_cutoff,
