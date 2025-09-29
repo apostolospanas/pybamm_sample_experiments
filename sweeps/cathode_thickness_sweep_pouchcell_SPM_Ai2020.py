@@ -5,13 +5,13 @@ import numpy as np
 import os
 from datetime import datetime
 from pathlib import Path
-import balthazar as blt 
+import balthazar as blt
 
 # ---------------------------
 # CONFIG
 # ---------------------------
 PARAM_SET = "Ai2020"
-MODEL_NAME = "SPM"
+MODEL_NAME = "DFN"
 
 n_cycles = 3
 charge_rate_C = 1.0
@@ -24,18 +24,17 @@ period_resolution = "1 minute"
 
 model_options = {"thermal": "lumped", "current collector": "uniform"}
 
-pos_thickness_um_list = [40, 60, 80, 100, 120]  
+pos_thickness_um_list = [40, 60, 80, 100, 120]
 
-# ---------------------------
-# OUTPUT DIR (safe for Balthazar: no __file__)
-# ---------------------------
 stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 BASE_DIR = Path(os.getcwd())
 OUTPUT_DIR = BASE_DIR / f"results_pos_thickness_sweep_{stamp}"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+
 def out(name: str) -> str:
     return str(OUTPUT_DIR / name)
+
 
 # ---------------------------
 # MODEL & BASE PARAMETERS
@@ -63,11 +62,13 @@ experiment = pybamm.Experiment(
     period=period_resolution
 )
 
+
 def make_solver():
     try:
         return pybamm.CasadiSolver(mode="safe", atol=1e-6, rtol=1e-6)
     except Exception:
         return pybamm.ScipySolver(atol=1e-6, rtol=1e-6)
+
 
 solver = make_solver()
 
@@ -117,9 +118,9 @@ for pos_um in pos_thickness_um_list:
     }
     summaries.append(metrics)
 
-    # Log metrics in Balthazar
+    # Expose metrics to Balthazar
     for k, v in metrics.items():
-        blt.log_metric(f"{tag} - {k}", v)
+        blt.output[f"{tag} - {k}"] = v
 
 # ---------------------------
 # VISUALISATION
@@ -131,7 +132,7 @@ for tag, df in dfs.items():
 ax1.set_xlabel("Time [h]"); ax1.set_ylabel("Terminal Voltage [V]")
 ax1.set_title(f"Voltage vs Time — Positive electrode thickness sweep ({PARAM_SET})")
 ax1.legend(); ax1.grid(True); fig1.tight_layout()
-blt.log_plot("Voltage vs Time", fig1)
+blt.output["Voltage vs Time"] = fig1
 
 # Discharge Energy vs Cycle
 def points_per_cycle(n, c): return n // c if c > 0 else n
@@ -145,7 +146,7 @@ for tag, df in dfs.items():
 ax2.set_xlabel("Cycle"); ax2.set_ylabel("Discharge Energy [Wh]")
 ax2.set_title(f"Discharge Energy vs Cycle — Positive thickness sweep ({PARAM_SET})")
 ax2.legend(); ax2.grid(True); fig2.tight_layout()
-blt.log_plot("Discharge Energy vs Cycle", fig2)
+blt.output["Discharge Energy vs Cycle"] = fig2
 
 # ---------------------------
 # SAVE SUMMARY
@@ -154,5 +155,6 @@ summary_df = pd.DataFrame(summaries).sort_values("Positive thickness [um]")
 summary_file = out("positive_thickness_sweep_summary.csv")
 summary_df.to_csv(summary_file, index=False)
 
-blt.log_artifact(summary_file)
-blt.log_dataframe("Summary Table", summary_df)
+# Expose summary to Balthazar
+blt.output["Summary CSV"] = str(summary_file)
+blt.output["Summary Table"] = summary_df
