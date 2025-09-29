@@ -31,10 +31,8 @@ BASE_DIR = Path(os.getcwd())
 OUTPUT_DIR = BASE_DIR / f"results_pos_thickness_sweep_{stamp}"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-
 def out(name: str) -> str:
     return str(OUTPUT_DIR / name)
-
 
 # ---------------------------
 # MODEL & BASE PARAMETERS
@@ -43,6 +41,7 @@ if MODEL_NAME == "DFN":
     base_model = pybamm.lithium_ion.DFN(options=model_options)
 else:
     base_model = pybamm.lithium_ion.SPMe(options=model_options)
+
 base_param = pybamm.ParameterValues(PARAM_SET)
 base_param.update({
     "Upper voltage cut-off [V]": v_charge_cutoff,
@@ -61,13 +60,11 @@ experiment = pybamm.Experiment(
     period=period_resolution
 )
 
-
 def make_solver():
     try:
         return pybamm.CasadiSolver(mode="safe", atol=1e-6, rtol=1e-6)
     except Exception:
         return pybamm.ScipySolver(atol=1e-6, rtol=1e-6)
-
 
 solver = make_solver()
 
@@ -120,13 +117,14 @@ for pos_um in pos_thickness_um_list:
     # Expose metrics to Balthazar
     for k, v in metrics.items():
         blt.output[f"{tag} - {k}"] = v
+
 # ---------------------------
 # VISUALISATION
 # ---------------------------
 import matplotlib
-print("Matplotlib backend:", matplotlib.get_backend())  # shows in run log
+print("Matplotlib backend:", matplotlib.get_backend())
 
-def points_per_cycle(n, c): 
+def points_per_cycle(n, c):
     return n // c if c > 0 else n
 
 # 1) Voltage vs Time
@@ -141,8 +139,7 @@ fig1_path = out("voltage_vs_time.png")
 fig1.savefig(fig1_path, dpi=150)
 blt.output["Voltage vs Time (png)"] = str(fig1_path)
 
-plt.show(block=False)   # <-- show for Workbench preview
-plt.pause(0.75)         # <-- give the UI time to capture
+plt.show()  # <-- blocking show for Balthazar capture
 
 # 2) Discharge Energy vs Cycle
 fig2, ax2 = plt.subplots(figsize=(8, 5))
@@ -159,11 +156,7 @@ fig2_path = out("discharge_energy_vs_cycle.png")
 fig2.savefig(fig2_path, dpi=150)
 blt.output["Discharge Energy vs Cycle (png)"] = str(fig2_path)
 
-plt.show(block=False)
-plt.pause(0.75)
-
-# (Optional) don't close figures; let the runner tear them down
-# plt.close(fig1); plt.close(fig2)
+plt.show()  # <-- blocking show again
 
 # ---------------------------
 # SAVE SUMMARY
@@ -175,5 +168,3 @@ summary_df.to_csv(summary_file, index=False)
 # Expose summary to Balthazar
 blt.output["Summary CSV"] = str(summary_file)
 blt.output["Summary Table"] = summary_df
-
-
