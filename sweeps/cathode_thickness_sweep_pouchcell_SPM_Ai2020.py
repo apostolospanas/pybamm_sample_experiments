@@ -120,11 +120,14 @@ for pos_um in pos_thickness_um_list:
     # Expose metrics to Balthazar
     for k, v in metrics.items():
         blt.output[f"{tag} - {k}"] = v
-
 # ---------------------------
 # VISUALISATION
 # ---------------------------
-# Voltage vs Time
+
+def points_per_cycle(n, c): 
+    return n // c if c > 0 else n
+
+# 1) Voltage vs Time
 fig1, ax1 = plt.subplots(figsize=(10, 6))
 for tag, df in dfs.items():
     ax1.plot(df["Time [h]"], df["Voltage [V]"], label=tag)
@@ -134,12 +137,11 @@ ax1.legend(); ax1.grid(True); fig1.tight_layout()
 
 fig1_path = out("voltage_vs_time.png")
 fig1.savefig(fig1_path)
-blt.output["Voltage vs Time"] = fig1_path   # <-- Save file, log path
-plt.close(fig1)  # free memory
+blt.output["Voltage vs Time"] = str(fig1_path)
+plt.show()          # <-- This makes the plot appear in the Workbench preview
+plt.close(fig1)
 
-# Discharge Energy vs Cycle
-def points_per_cycle(n, c): return n // c if c > 0 else n
-
+# 2) Discharge Energy vs Cycle
 fig2, ax2 = plt.subplots(figsize=(8, 5))
 for tag, df in dfs.items():
     npts = points_per_cycle(len(df), n_cycles)
@@ -152,7 +154,8 @@ ax2.legend(); ax2.grid(True); fig2.tight_layout()
 
 fig2_path = out("discharge_energy_vs_cycle.png")
 fig2.savefig(fig2_path)
-blt.output["Discharge Energy vs Cycle"] = fig2_path
+blt.output["Discharge Energy vs Cycle"] = str(fig2_path)
+plt.show()          # <-- Show this one too
 plt.close(fig2)
 
 # ---------------------------
@@ -165,3 +168,5 @@ summary_df.to_csv(summary_file, index=False)
 # Expose summary to Balthazar
 blt.output["Summary CSV"] = str(summary_file)
 blt.output["Summary Table"] = summary_df
+
+
