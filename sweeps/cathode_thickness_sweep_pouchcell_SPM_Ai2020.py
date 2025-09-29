@@ -131,7 +131,11 @@ for tag, df in dfs.items():
 ax1.set_xlabel("Time [h]"); ax1.set_ylabel("Terminal Voltage [V]")
 ax1.set_title(f"Voltage vs Time — Positive electrode thickness sweep ({PARAM_SET})")
 ax1.legend(); ax1.grid(True); fig1.tight_layout()
-blt.output["Voltage vs Time"] = fig1
+
+fig1_path = out("voltage_vs_time.png")
+fig1.savefig(fig1_path)
+blt.output["Voltage vs Time"] = fig1_path   # <-- Save file, log path
+plt.close(fig1)  # free memory
 
 # Discharge Energy vs Cycle
 def points_per_cycle(n, c): return n // c if c > 0 else n
@@ -145,7 +149,11 @@ for tag, df in dfs.items():
 ax2.set_xlabel("Cycle"); ax2.set_ylabel("Discharge Energy [Wh]")
 ax2.set_title(f"Discharge Energy vs Cycle — Positive thickness sweep ({PARAM_SET})")
 ax2.legend(); ax2.grid(True); fig2.tight_layout()
-blt.output["Discharge Energy vs Cycle"] = fig2
+
+fig2_path = out("discharge_energy_vs_cycle.png")
+fig2.savefig(fig2_path)
+blt.output["Discharge Energy vs Cycle"] = fig2_path
+plt.close(fig2)
 
 # ---------------------------
 # SAVE SUMMARY
