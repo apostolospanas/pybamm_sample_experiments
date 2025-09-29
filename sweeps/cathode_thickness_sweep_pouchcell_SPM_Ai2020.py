@@ -123,6 +123,8 @@ for pos_um in pos_thickness_um_list:
 # ---------------------------
 # VISUALISATION
 # ---------------------------
+import matplotlib
+print("Matplotlib backend:", matplotlib.get_backend())  # shows in run log
 
 def points_per_cycle(n, c): 
     return n // c if c > 0 else n
@@ -136,10 +138,11 @@ ax1.set_title(f"Voltage vs Time — Positive electrode thickness sweep ({PARAM_S
 ax1.legend(); ax1.grid(True); fig1.tight_layout()
 
 fig1_path = out("voltage_vs_time.png")
-fig1.savefig(fig1_path)
-blt.output["Voltage vs Time"] = str(fig1_path)
-plt.show()          # <-- This makes the plot appear in the Workbench preview
-plt.close(fig1)
+fig1.savefig(fig1_path, dpi=150)
+blt.output["Voltage vs Time (png)"] = str(fig1_path)
+
+plt.show(block=False)   # <-- show for Workbench preview
+plt.pause(0.75)         # <-- give the UI time to capture
 
 # 2) Discharge Energy vs Cycle
 fig2, ax2 = plt.subplots(figsize=(8, 5))
@@ -153,10 +156,14 @@ ax2.set_title(f"Discharge Energy vs Cycle — Positive thickness sweep ({PARAM_S
 ax2.legend(); ax2.grid(True); fig2.tight_layout()
 
 fig2_path = out("discharge_energy_vs_cycle.png")
-fig2.savefig(fig2_path)
-blt.output["Discharge Energy vs Cycle"] = str(fig2_path)
-plt.show()          # <-- Show this one too
-plt.close(fig2)
+fig2.savefig(fig2_path, dpi=150)
+blt.output["Discharge Energy vs Cycle (png)"] = str(fig2_path)
+
+plt.show(block=False)
+plt.pause(0.75)
+
+# (Optional) don't close figures; let the runner tear them down
+# plt.close(fig1); plt.close(fig2)
 
 # ---------------------------
 # SAVE SUMMARY
