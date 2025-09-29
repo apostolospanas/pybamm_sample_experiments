@@ -39,12 +39,12 @@ def out(name: str) -> str:
 # ---------------------------
 # MODEL & BASE PARAMETERS
 # ---------------------------
-if MODEL_NAME == "SPM":
-    base_model = pybamm.lithium_ion.SPM(options=model_options)
+if MODEL_NAME == "DFN":
+    base_model = pybamm.lithium_ion.DFN(options=model_options)
 elif MODEL_NAME == "SPMe":
     base_model = pybamm.lithium_ion.SPMe(options=model_options)
-elif MODEL_NAME == "DFN":
-    base_model = pybamm.lithium_ion.DFN(options=model_options)
+elif MODEL_NAME == "SPM":
+    base_model = pybamm.lithium_ion.SPM(options=model_options)
 else:
     raise ValueError(f"Unknown model name: {MODEL_NAME}")
 
