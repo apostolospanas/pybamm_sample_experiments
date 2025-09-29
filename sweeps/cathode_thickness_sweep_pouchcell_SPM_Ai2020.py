@@ -39,7 +39,7 @@ def out(name: str) -> str:
 # ---------------------------
 # MODEL & BASE PARAMETERS
 # ---------------------------
-if MODEL_NAME == "SPMe":
+if MODEL_NAME == "DFN":
     base_model = pybamm.lithium_ion.DFN(options=model_options)
 else:
     base_model = pybamm.lithium_ion.SPMe(options=model_options)
