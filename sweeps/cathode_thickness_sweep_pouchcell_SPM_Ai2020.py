@@ -11,7 +11,7 @@ import balthazar as blt
 # CONFIG
 # ---------------------------
 PARAM_SET = "Ai2020"
-MODEL_NAME = "DFN"
+MODEL_NAME = "SPM"
 
 n_cycles = 3
 charge_rate_C = 1.0
@@ -26,8 +26,12 @@ model_options = {"thermal": "lumped", "current collector": "uniform"}
 
 pos_thickness_um_list = [40, 60, 80, 100, 120]  
 
+# ---------------------------
+# OUTPUT DIR (safe for Balthazar: no __file__)
+# ---------------------------
 stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-OUTPUT_DIR = Path(__file__).resolve().parent / f"results_pos_thickness_sweep_{stamp}"
+BASE_DIR = Path(os.getcwd())
+OUTPUT_DIR = BASE_DIR / f"results_pos_thickness_sweep_{stamp}"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def out(name: str) -> str:
