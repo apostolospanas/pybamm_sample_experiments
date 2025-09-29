@@ -11,7 +11,7 @@ import balthazar as blt
 # CONFIG
 # ---------------------------
 PARAM_SET = "Ai2020"
-MODEL_NAME = "DFN"
+MODEL_NAME = "SPM"
 
 n_cycles = 3
 charge_rate_C = 1.0
@@ -39,7 +39,7 @@ def out(name: str) -> str:
 # ---------------------------
 # MODEL & BASE PARAMETERS
 # ---------------------------
-if MODEL_NAME == "DFN":
+if MODEL_NAME == "SPM":
     base_model = pybamm.lithium_ion.DFN(options=model_options)
 else:
     base_model = pybamm.lithium_ion.SPMe(options=model_options)
