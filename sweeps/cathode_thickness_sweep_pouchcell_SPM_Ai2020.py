@@ -168,3 +168,25 @@ summary_df.to_csv(summary_file, index=False)
 # Expose summary to Balthazar
 blt.output["Summary CSV"] = str(summary_file)
 blt.output["Summary Table"] = summary_df
+
+def save_relevant_params_in_output(summary_df, fig1, fig2):
+    # Save numeric values
+    for _, row in summary_df.iterrows():
+        thickness = int(row["Positive thickness [um]"])
+        blt.output[f"capacity_Ah_pos{thickness}um"] = f"{row['Max discharge capacity [Ah]']:.4f}"
+        blt.output[f"end_voltage_V_pos{thickness}um"] = f"{row['End voltage [V]']:.4f}"
+        blt.output[f"energy_Wh_pos{thickness}um"] = f"{row['Final discharge energy [Wh]']:.4f}"
+
+    # Save plots for preview
+    plt.figure(fig1.number)
+    plt.show()   # show first figure
+
+    plt.figure(fig2.number)
+    plt.show()   # show second figure
+
+    # Save summary CSV path
+    blt.output["summary_csv"] = str(summary_file)
+
+# Call at the very end
+save_relevant_params_in_output(summary_df, fig1, fig2)
+
