@@ -5,6 +5,7 @@ import numpy as np
 import os
 from datetime import datetime
 from pathlib import Path
+import balthazar as blt
 
 # ---------------------------
 # CONFIG
@@ -14,25 +15,19 @@ PARAM_SET = "Ai2020"      # pouch-cell parameter set
 
 # Cycling protocol
 n_cycles = 5
-charge_rate_C = 3.0
-discharge_rate_C = 3.0
+charge_rate_C = 0.5
+discharge_rate_C = 0.5
 v_charge_cutoff = 4.20
 v_discharge_cutoff = 3.00
 cv_tail_cutoff = 0.05
 rest_between = "10 minutes"
 period_resolution = "1 minute"
 
-# Model options (pass to model constructor, not Simulation)
-model_options = {
-    "thermal": "lumped",
-    "current collector": "uniform",
-}
+# Model options
+model_options = {"thermal": "lumped", "current collector": "uniform"}
 
-# Timestamp for outputs
 stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-# Output directory
-OUTPUT_DIR = Path(__file__).resolve().parent / "results_ai2020"
+OUTPUT_DIR = Path(os.getcwd()) / f"results_ai2020_{stamp}"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def out(name: str) -> str:
@@ -47,8 +42,6 @@ elif MODEL_NAME == "SPMe":
     model = pybamm.lithium_ion.SPMe(options=model_options)
 else:
     raise ValueError(f"Unsupported MODEL_NAME: {MODEL_NAME}")
-
-models = {MODEL_NAME: model}
 
 param = pybamm.ParameterValues(PARAM_SET)
 param.update({
@@ -77,87 +70,85 @@ def make_solver():
 solver = make_solver()
 
 # ---------------------------
-# 1) SIMULATE & EXPORT DATA
+# 1) SIMULATE
 # ---------------------------
-solutions = {}
-metrics = {}
+csv_file = out(f"results_{MODEL_NAME}_{PARAM_SET}.csv")
 
-for name, model in models.items():
-    csv_file = out(f"results_{name}_{PARAM_SET}_{stamp}.csv")
-    if os.path.exists(csv_file):
-        print(f"{csv_file} exists, skipping simulation for {name}.")
-        df = pd.read_csv(csv_file)
-    else:
-        print(f"\n=== Running {name} with {PARAM_SET} ===")
-        sim = pybamm.Simulation(
-            model,
-            parameter_values=param,
-            experiment=experiment,
-            solver=solver
-        )
-        sol = sim.solve()
-        solutions[name] = sol
+if os.path.exists(csv_file):
+    df = pd.read_csv(csv_file)
+else:
+    print(f"\n=== Running {MODEL_NAME} with {PARAM_SET} ===")
+    sim = pybamm.Simulation(model, parameter_values=param,
+                            experiment=experiment, solver=solver)
+    sol = sim.solve()
 
-        out_dict = {
-            "Time [h]": sol["Time [h]"].entries,
-            "Voltage [V]": sol["Terminal voltage [V]"].entries,
-            "Current [A]": sol["Current [A]"].entries,
-            "Discharge capacity [A.h]": sol["Discharge capacity [A.h]"].entries,
-            "Discharge energy [W.h]": sol["Discharge energy [W.h]"].entries,
-            "Power [W]": sol["Power [W]"].entries,
-        }
-        df = pd.DataFrame(out_dict)
-        df.to_csv(csv_file, index=False)
-        print(f"Saved {name} results to {csv_file}")
-
-    metrics[name] = {
-        "Max discharge capacity [Ah]": float(df["Discharge capacity [A.h]"].max()),
-        "End voltage [V]": float(df["Voltage [V]"].iloc[-1]),
+    out_dict = {
+        "Time [h]": sol["Time [h]"].entries,
+        "Voltage [V]": sol["Terminal voltage [V]"].entries,
+        "Current [A]": sol["Current [A]"].entries,
+        "Discharge capacity [A.h]": sol["Discharge capacity [A.h]"].entries,
+        "Discharge energy [W.h]": sol["Discharge energy [W.h]"].entries,
+        "Power [W]": sol["Power [W]"].entries,
     }
+    df = pd.DataFrame(out_dict)
+    df.to_csv(csv_file, index=False)
 
 # ---------------------------
-# 2) LOAD DATA
+# 2) METRICS
 # ---------------------------
-dfs = {name: pd.read_csv(out(f"results_{name}_{PARAM_SET}_{stamp}.csv"))
-       for name in models.keys()}
-
-def points_per_cycle(df_len, n_cycles_):
-    return df_len // n_cycles_ if n_cycles_ > 0 else df_len
+metrics = {
+    "capacity_Ah": float(df["Discharge capacity [A.h]"].max()),
+    "end_voltage_V": float(df["Voltage [V]"].iloc[-1]),
+    "energy_Wh": float(df["Discharge energy [W.h]"].iloc[-1]),
+}
+# Push metrics into Balthazar outputs
+for k, v in metrics.items():
+    blt.output[k] = f"{v:.4f}"
 
 # ---------------------------
 # 3) PLOTS
 # ---------------------------
-plt.figure(figsize=(10, 6))
-for name, df in dfs.items():
-    plt.plot(df["Time [h]"], df["Voltage [V]"], label=name)
-plt.xlabel("Time [h]"); plt.ylabel("Terminal Voltage [V]")
-plt.title(f"Voltage vs Time ({PARAM_SET})")
-plt.legend(); plt.grid(True); plt.tight_layout(); plt.show()
+def points_per_cycle(df_len, n_cycles_):
+    return df_len // n_cycles_ if n_cycles_ > 0 else df_len
 
-plt.figure(figsize=(10, 6))
-for name, df in dfs.items():
-    npts = points_per_cycle(len(df), n_cycles)
-    first_cycle = df.iloc[:npts]
-    plt.plot(first_cycle["Discharge capacity [A.h]"], first_cycle["Voltage [V]"], label=name)
-plt.xlabel("Discharge Capacity [Ah]"); plt.ylabel("Voltage [V]")
-plt.title(f"Voltage vs Discharge Capacity (Cycle 1, {PARAM_SET})")
-plt.legend(); plt.grid(True); plt.tight_layout(); plt.show()
+# Voltage vs Time
+fig1, ax1 = plt.subplots(figsize=(10, 6))
+ax1.plot(df["Time [h]"], df["Voltage [V]"], label=MODEL_NAME)
+ax1.set_xlabel("Time [h]"); ax1.set_ylabel("Terminal Voltage [V]")
+ax1.set_title(f"Voltage vs Time ({PARAM_SET})")
+ax1.legend(); ax1.grid(True); fig1.tight_layout()
+fig1.savefig(out("voltage_vs_time.png"), dpi=150)
+plt.show()
 
-plt.figure(figsize=(8, 5))
-for name, df in dfs.items():
-    npts = points_per_cycle(len(df), n_cycles)
-    cycle_ends = [df["Discharge capacity [A.h]"].iloc[min((i+1)*npts - 1, len(df)-1)]
-                  for i in range(n_cycles)]
-    plt.plot(range(1, n_cycles+1), cycle_ends, marker='o', label=name)
-plt.xlabel("Cycle"); plt.ylabel("End-of-Discharge Capacity [Ah]")
-plt.title(f"Capacity Retention vs Cycle ({PARAM_SET})")
-plt.legend(); plt.grid(True); plt.tight_layout(); plt.show()
+# Voltage vs Discharge Capacity (Cycle 1)
+fig2, ax2 = plt.subplots(figsize=(10, 6))
+npts = points_per_cycle(len(df), n_cycles)
+first_cycle = df.iloc[:npts]
+ax2.plot(first_cycle["Discharge capacity [A.h]"], first_cycle["Voltage [V]"], label=MODEL_NAME)
+ax2.set_xlabel("Discharge Capacity [Ah]"); ax2.set_ylabel("Voltage [V]")
+ax2.set_title(f"Voltage vs Discharge Capacity (Cycle 1, {PARAM_SET})")
+ax2.legend(); ax2.grid(True); fig2.tight_layout()
+fig2.savefig(out("voltage_vs_capacity.png"), dpi=150)
+plt.show()
+
+# Capacity Retention vs Cycle
+fig3, ax3 = plt.subplots(figsize=(8, 5))
+npts = points_per_cycle(len(df), n_cycles)
+cycle_ends = [df["Discharge capacity [A.h]"].iloc[min((i+1)*npts - 1, len(df)-1)]
+              for i in range(n_cycles)]
+ax3.plot(range(1, n_cycles+1), cycle_ends, marker='o', label=MODEL_NAME)
+ax3.set_xlabel("Cycle"); ax3.set_ylabel("End-of-Discharge Capacity [Ah]")
+ax3.set_title(f"Capacity Retention vs Cycle ({PARAM_SET})")
+ax3.legend(); ax3.grid(True); fig3.tight_layout()
+fig3.savefig(out("capacity_vs_cycle.png"), dpi=150)
+plt.show()
 
 # ---------------------------
 # 4) SAVE SUMMARY
 # ---------------------------
-summary = pd.DataFrame(metrics).T
-summary_file = out(f"battery_model_summary_{PARAM_SET}_{stamp}.csv")
-summary.to_csv(summary_file)
-print(f"\nSaved summary metrics to {summary_file}")
-print(summary)
+summary = pd.DataFrame([metrics])
+summary_file = out(f"battery_model_summary_{PARAM_SET}.csv")
+summary.to_csv(summary_file, index=False)
+
+blt.output["summary_csv"] = str(summary_file)
+blt.output["summary_table"] = summary
