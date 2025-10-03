@@ -1,34 +1,32 @@
+import glob
 import pandas as pd
 import matplotlib.pyplot as plt
-import glob
-import balthazar as blt
 from pathlib import Path
 
-# Find all result CSVs in current working dir
-csv_files = glob.glob("*.csv")
+# Root Balthazar Runner data directory
+DATA_DIR = Path(r"C:\Users\apost\AppData\Local\Balthazar Labs\Balthazar Runner\data")
 
-dfs, labels = [], []
+# Search recursively for CSVs that match your keywords
+csv_files = glob.glob(str(DATA_DIR / "**" / "*DFN_Ai2020*.csv"), recursive=True)
 
+print(f"Found {len(csv_files)} CSV files:")
+for f in csv_files:
+    print(" -", f)
+
+# Overlay Voltage vs Capacity from all matching runs
+plt.figure(figsize=(10, 6))
 for file in csv_files:
-    df = pd.read_csv(file)
-    dfs.append(df)
-
-    # Infer C-rate from filename (assumes naming convention like ..._2C_...csv)
-    if "2.5C" in file: labels.append("2.5C")
-    elif "2C" in file: labels.append("2C")
-    else: labels.append(file)
-
-# Overlay Voltage vs Capacity
-plt.figure(figsize=(10,6))
-for df, label in zip(dfs, labels):
-    plt.plot(df["Discharge capacity [A.h]"], df["Voltage [V]"], label=label)
+    try:
+        df = pd.read_csv(file)
+        if "Discharge capacity [A.h]" in df.columns and "Voltage [V]" in df.columns:
+            plt.plot(df["Discharge capacity [A.h]"], df["Voltage [V]"], label=Path(file).parent.name)
+    except Exception as e:
+        print(f"Error reading {file}: {e}")
 
 plt.xlabel("Discharge Capacity [Ah]")
-plt.ylabel("Voltage [V]")
-plt.title("CCD Comparison Across Runs")
-plt.legend(); plt.grid(True)
-
-out_file = Path("compare_ccd_overlay.png")
-plt.savefig(out_file, dpi=150)
-
-blt.output["ccd_overlay"] = str(out_file)
+plt.ylabel("Terminal Voltage [V]")
+plt.title("CCD Overlay: DFN + Ai2020")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
