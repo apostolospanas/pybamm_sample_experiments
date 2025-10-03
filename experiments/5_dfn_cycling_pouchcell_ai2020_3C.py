@@ -15,8 +15,8 @@ PARAM_SET = "Ai2020"      # pouch-cell parameter set
 
 # Cycling protocol
 n_cycles = 5
-charge_rate_C = 0.5
-discharge_rate_C = 0.5
+charge_rate_C = 2.5
+discharge_rate_C = 2.5
 v_charge_cutoff = 4.20
 v_discharge_cutoff = 3.00
 cv_tail_cutoff = 0.05
