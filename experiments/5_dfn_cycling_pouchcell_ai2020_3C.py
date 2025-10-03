@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 import balthazar as blt
+import csv
 
 # ---------------------------
 # CONFIG
@@ -70,12 +71,31 @@ def make_solver():
 solver = make_solver()
 
 # ---------------------------
+# METADATA (1/2)
+# ---------------------------
+metadata = {
+    "model": MODEL_NAME,
+    "param_set": PARAM_SET,
+    "charge_rate_C": charge_rate_C,
+    "discharge_rate_C": discharge_rate_C,
+    "voltage_cutoffs": f"{v_discharge_cutoff}-{v_charge_cutoff}V",
+    "n_cycles": n_cycles,
+    "timestamp": datetime.now().isoformat(),
+    "user": "apostolospanas",
+    "experiment_type": "CCD",
+    "cell_type": "PouchCell",
+}
+# Push metadata into Balthazar outputs
+for k, v in metadata.items():
+    blt.output[f"meta_{k}"] = str(v)
+
+# ---------------------------
 # 1) SIMULATE
 # ---------------------------
 csv_file = out(f"results_{MODEL_NAME}_{PARAM_SET}.csv")
 
 if os.path.exists(csv_file):
-    df = pd.read_csv(csv_file)
+    df = pd.read_csv(csv_file, comment="#")  # skip metadata headers
 else:
     print(f"\n=== Running {MODEL_NAME} with {PARAM_SET} ===")
     sim = pybamm.Simulation(model, parameter_values=param,
@@ -91,7 +111,15 @@ else:
         "Power [W]": sol["Power [W]"].entries,
     }
     df = pd.DataFrame(out_dict)
-    df.to_csv(csv_file, index=False)
+
+    # ---------------------------
+    # METADATA (2/2) -> embed into CSV
+    # ---------------------------
+    with open(csv_file, "w", newline="") as f:
+        writer = csv.writer(f)
+        for k, v in metadata.items():
+            writer.writerow([f"# {k}", v])
+        df.to_csv(f, index=False)
 
 # ---------------------------
 # 2) METRICS
